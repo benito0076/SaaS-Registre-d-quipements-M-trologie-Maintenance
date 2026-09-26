@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { FileDown } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { formatDateFr } from "@/lib/dates";
+import { pageTitle } from "@/i18n/metadata";
+import { getAppLocale } from "@/i18n/server";
+import { formatDate } from "@/lib/dates";
 import { A4_GRID, LABEL_H_MM, LABEL_W_MM } from "@/lib/labels-pdf";
 import { qrSvg } from "@/lib/qr";
 import { requireUser } from "@/lib/session";
@@ -10,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { getLabelEquipments, parseIds } from "@/server/labels";
 import { PrintButton } from "./print-button";
 
-export const metadata: Metadata = { title: "Étiquettes" };
+export const generateMetadata = pageTitle("labels");
 
 /**
  * Aperçu et impression des étiquettes 50 × 30 mm (QR code vectoriel SVG).
@@ -22,7 +24,12 @@ export default async function LabelsPage({ searchParams }: PageProps<"/labels">)
   const sp = await searchParams;
   const ids = parseIds(sp.ids);
   const format = sp.format === "single" ? "single" : "a4";
-  const rows = await getLabelEquipments(user, ids);
+  const [rows, t, tc, locale] = await Promise.all([
+    getLabelEquipments(user, ids),
+    getTranslations("labels"),
+    getTranslations("common"),
+    getAppLocale(),
+  ]);
   const labels = await Promise.all(rows.map(async (r) => ({ ...r, svg: await qrSvg(r.qrCodeToken!) })));
 
   const query = (f: string) => `?${new URLSearchParams({ ...(ids.length ? { ids: ids.join(",") } : {}), format: f })}`;
@@ -37,16 +44,16 @@ export default async function LabelsPage({ searchParams }: PageProps<"/labels">)
 
       <div className="no-print flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Étiquettes ({labels.length})</h1>
+          <h1 className="text-xl font-semibold">{t("title", { count: labels.length })}</h1>
           <p className="text-sm text-muted-foreground">
-            {ids.length ? "Équipements sélectionnés" : "Tous les équipements"} · format {LABEL_W_MM} × {LABEL_H_MM} mm
+            {ids.length ? t("selected") : t("all")} · {t("format", { w: LABEL_W_MM, h: LABEL_H_MM })}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="inline-flex rounded-lg border p-0.5">
             {[
-              { f: "single", label: "Étiquette 50×30" },
-              { f: "a4", label: `Planche A4 (${A4_GRID.cols * A4_GRID.rows}/page)` },
+              { f: "single", label: t("single") },
+              { f: "a4", label: t("a4", { count: A4_GRID.cols * A4_GRID.rows }) },
             ].map(({ f, label }) => (
               <Link
                 key={f}
@@ -58,14 +65,14 @@ export default async function LabelsPage({ searchParams }: PageProps<"/labels">)
             ))}
           </div>
           <a href={`/api/labels${query(format)}`} target="_blank" rel="noopener" className={buttonVariants({ variant: "outline" })}>
-            <FileDown /> PDF
+            <FileDown /> {tc("pdf")}
           </a>
-          <PrintButton />
+          <PrintButton label={tc("print")} />
         </div>
       </div>
 
       {labels.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">Aucun équipement à étiqueter.</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
         <div
           className={cn(
@@ -97,9 +104,9 @@ export default async function LabelsPage({ searchParams }: PageProps<"/labels">)
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "5.5pt", color: "#555" }}>Prochaine échéance</div>
+                  <div style={{ fontSize: "5.5pt", color: "#555" }}>{t("nextDue")}</div>
                   <div className="font-bold tabular-nums" style={{ fontSize: "9pt" }}>
-                    {formatDateFr(l.nextCalibrationDate)}
+                    {formatDate(l.nextCalibrationDate, locale)}
                   </div>
                 </div>
               </div>

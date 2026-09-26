@@ -142,8 +142,6 @@ function toRow(input: EquipmentInput) {
   };
 }
 
-const DUPLICATE_MESSAGE = "Ce code interne est déjà utilisé dans votre organisation";
-
 export async function createEquipment(ctx: Ctx, input: EquipmentInput): Promise<Equipment> {
   assertCan(ctx.role, "equipment:write");
   try {
@@ -165,9 +163,7 @@ export async function createEquipment(ctx: Ctx, input: EquipmentInput): Promise<
           .limit(1),
       ]);
       if (!canCreateEquipment(sub?.planTier ?? "free", current)) {
-        throw new PlanLimitError(
-          `Le plan gratuit est limité à ${FREE_PLAN_EQUIPMENT_LIMIT} équipements. Passez au plan Pro pour continuer.`,
-        );
+        throw new PlanLimitError();
       }
 
       const [row] = await tx
@@ -177,7 +173,7 @@ export async function createEquipment(ctx: Ctx, input: EquipmentInput): Promise<
       return row;
     });
   } catch (e) {
-    if (isUniqueViolation(e)) throw new ConflictError(DUPLICATE_MESSAGE);
+    if (isUniqueViolation(e)) throw new ConflictError("duplicateInternalId");
     throw e;
   }
 }
@@ -198,7 +194,7 @@ export async function updateEquipment(
     if (!row) throw new NotFoundError();
     return row;
   } catch (e) {
-    if (isUniqueViolation(e)) throw new ConflictError(DUPLICATE_MESSAGE);
+    if (isUniqueViolation(e)) throw new ConflictError("duplicateInternalId");
     throw e;
   }
 }

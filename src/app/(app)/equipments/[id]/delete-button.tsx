@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Trash2 } from "lucide-react";
 import { deleteEquipmentAction } from "@/app/actions/equipments";
 import { FormError, SubmitButton } from "@/components/form";
@@ -15,28 +16,29 @@ import {
 } from "@/components/ui/dialog";
 
 export function DeleteEquipmentButton({ id, internalId }: { id: string; internalId: string }) {
+  const t = useTranslations();
   const [open, setOpen] = useState(false);
   const [state, action] = useActionState(async () => deleteEquipmentAction(id), {});
   return (
     <>
       <Button variant="destructive" size="lg" onClick={() => setOpen(true)}>
-        <Trash2 /> Supprimer
+        <Trash2 /> {t("equipment.delete")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer {internalId} ?</DialogTitle>
+            <DialogTitle>{t("equipment.deleteTitle", { id: internalId })}</DialogTitle>
             <DialogDescription>
-              L&apos;équipement, son historique d&apos;interventions et ses certificats seront définitivement supprimés.
+              {t("equipment.deleteDescription")}
             </DialogDescription>
           </DialogHeader>
           <form action={action} className="grid gap-3">
             <FormError message={state.error} />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Annuler
+                {t("common.cancel")}
               </Button>
-              <SubmitButton variant="destructive">Supprimer définitivement</SubmitButton>
+              <SubmitButton variant="destructive">{t("equipment.deleteConfirm")}</SubmitButton>
             </DialogFooter>
           </form>
         </DialogContent>

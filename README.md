@@ -4,6 +4,8 @@ Implémentation du cahier des charges : inventaire multi-organisation, QR codes 
 scan mobile, historique d'interventions avec certificats, alertes e-mail quotidiennes et
 facturation Stripe (plan gratuit limité à 15 équipements, plan Pro à 49 €/mois).
 
+L'application est disponible en **français** (par défaut), **anglais** et **espagnol**.
+
 ## Stack
 
 | Composant | Choix |
@@ -15,6 +17,7 @@ facturation Stripe (plan gratuit limité à 15 équipements, plan Pro à 49 €/
 | Authentification | Auth.js / NextAuth v5 (identifiants e-mail + mot de passe, JWT) |
 | Notifications | Resend + Vercel Cron (`vercel.json`, tous les jours à 06:00 UTC) |
 | Paiements | Stripe Checkout + Billing Portal + webhooks |
+| Traductions | next-intl (catalogues `messages/fr.json`, `en.json`, `es.json`) |
 
 ## Démarrage
 
@@ -116,10 +119,26 @@ valable 5 minutes. La colonne `certificate_file_url` contient la clé d'objet, p
 Chaque événement relit l'abonnement via l'API Stripe (robuste à l'ordre d'arrivée) ; `plan_tier`
 vaut `pro` pour les statuts `active`, `trialing` et `past_due`.
 
+### Langues (fr / en / es)
+- **Interface** : langue choisie via le sélecteur (en-tête, pages de connexion, page de scan), mémorisée
+  dans le cookie `NEXT_LOCALE` ; à défaut, détectée d'après la langue du navigateur
+  (`Accept-Language`), sinon français. Pas de préfixe de langue dans les URL : les QR codes imprimés
+  restent valables quelle que soit la langue du téléphone qui les scanne.
+- **E-mails d'alerte** : langue de l'organisation (`organizations.locale`), initialisée avec la langue
+  utilisée à l'inscription et modifiable par un administrateur (page Équipe). Un seul e-mail par
+  organisation est conservé.
+- **API REST** : les messages d'erreur suivent `Accept-Language` (ou le cookie).
+- **PDF d'étiquettes** : langue de l'interface.
+- Les erreurs métier et de validation sont des clés (`errors.*`, `validation.*`) traduites à la
+  frontière (Server Action ou Route Handler). Un test vérifie que les trois catalogues ont
+  exactement les mêmes clés.
+- Ajouter une langue : créer `messages/<code>.json` et compléter `LOCALES` dans `src/i18n/config.ts`.
+
 ## Écarts et ajouts par rapport au schéma §2
 - `users.password_hash` : nécessaire à l'authentification e-mail / mot de passe.
 - Index `org_id`, unicité `(org_id, internal_id)`.
 - Tables `cron_runs` et `alert_dispatches` : journalisation et reprise des alertes.
+- `organizations.locale` : langue des e-mails d'alerte (`fr`, `en` ou `es`).
 - L'ajout de membres se fait par un administrateur avec un mot de passe provisoire (pas encore
   d'invitation par e-mail ni de réinitialisation de mot de passe).
 

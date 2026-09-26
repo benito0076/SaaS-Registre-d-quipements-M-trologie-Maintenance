@@ -1,10 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import { getTranslations } from "next-intl/server";
+import { getAppLocale } from "@/i18n/server";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: { default: "Registre Métrologie", template: "%s · Registre Métrologie" },
-  description: "Registre d'équipements, suivi des étalonnages et de la maintenance.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations();
+  return {
+    title: { default: t("common.appName"), template: `%s · ${t("common.appName")}` },
+    description: t("meta.description"),
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -12,9 +17,10 @@ export const viewport: Viewport = {
   themeColor: "#111827",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getAppLocale();
   return (
-    <html lang="fr" className="h-full antialiased">
+    <html lang={locale} className="h-full antialiased">
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

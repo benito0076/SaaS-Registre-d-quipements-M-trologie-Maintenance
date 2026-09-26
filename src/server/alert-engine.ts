@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
+import type { Locale } from "@/i18n/config";
 import { alertDispatches, cronRuns, equipments, organizations, users } from "@/db/schema";
 import { alertLevelFor, renderAlertEmail, type AlertItem } from "@/lib/alerts";
 import { addDays, daysUntil, todayIso } from "@/lib/dates";
@@ -97,6 +98,7 @@ export async function runExpirationCheck(opts: ExpirationRunOptions): Promise<Ex
         equipmentId: equipments.id,
         orgId: equipments.orgId,
         orgName: organizations.name,
+        orgLocale: organizations.locale,
         internalId: equipments.internalId,
         name: equipments.name,
         location: equipments.location,
@@ -120,12 +122,12 @@ export async function runExpirationCheck(opts: ExpirationRunOptions): Promise<Ex
       .groupBy(alertDispatches.orgId);
     const sinceByOrg = new Map(failed.map((f) => [f.orgId, f.day < since ? f.day : since]));
 
-    const byOrg = new Map<string, { orgName: string; items: AlertItem[] }>();
+    const byOrg = new Map<string, { orgName: string; locale: Locale; items: AlertItem[] }>();
     for (const c of candidates) {
       if (!c.orgId) continue;
       const level = alertLevelFor(c.nextCalibrationDate, today, sinceByOrg.get(c.orgId) ?? since);
       if (!level) continue;
-      const group = byOrg.get(c.orgId) ?? { orgName: c.orgName, items: [] };
+      const group = byOrg.get(c.orgId) ?? { orgName: c.orgName, locale: c.orgLocale, items: [] };
       group.items.push({
         equipmentId: c.equipmentId,
         internalId: c.internalId,
@@ -140,7 +142,7 @@ export async function runExpirationCheck(opts: ExpirationRunOptions): Promise<Ex
     summary.organizationsWithAlerts = byOrg.size;
 
     for (const [orgId, group] of byOrg) {
-      const outcome = await dispatchForOrg(orgId, group.orgName, group.items, today, opts, log);
+      const outcome = await dispatchForOrg(orgId, group, today, opts, log);
       summary.organizationsProcessed++;
       summary.equipmentAlerts += group.items.length;
       if (outcome.kind === "already_sent") summary.alreadySent++;
@@ -191,8 +193,7 @@ type DispatchOutcome =
 
 async function dispatchForOrg(
   orgId: string,
-  orgName: string,
-  items: AlertItem[],
+  { orgName, locale, items }: { orgName: string; locale: Locale; items: AlertItem[] },
   today: string,
   opts: ExpirationRunOptions,
   log: NonNullable<ExpirationRunOptions["log"]>,
@@ -225,7 +226,7 @@ async function dispatchForOrg(
     return { kind: "no_recipients" };
   }
 
-  const email = renderAlertEmail({ orgName, appUrl: opts.appUrl, items });
+  const email = renderAlertEmail({ orgName, appUrl: opts.appUrl, items, locale });
   let attempts = dispatch.attempts;
   try {
     const { attempts: used } = await withRetry(

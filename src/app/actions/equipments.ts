@@ -39,7 +39,7 @@ export async function createEquipmentAction(
     const input = parseOrThrow(equipmentInputSchema, formToObject(form, EQUIPMENT_FIELDS));
     id = (await createEquipment(ctx, input)).id;
   } catch (e) {
-    return toActionState(e, form);
+    return await toActionState(e, form);
   }
   revalidatePath("/dashboard");
   redirect(`/equipments/${id}`);
@@ -55,7 +55,7 @@ export async function updateEquipmentAction(
     const input = parseOrThrow(equipmentInputSchema, formToObject(form, EQUIPMENT_FIELDS));
     await updateEquipment(ctx, id, input);
   } catch (e) {
-    return toActionState(e, form);
+    return await toActionState(e, form);
   }
   revalidatePath("/dashboard");
   revalidatePath(`/equipments/${id}`);
@@ -68,7 +68,7 @@ export async function deleteEquipmentAction(id: string): Promise<ActionState> {
     const keys = await deleteEquipment(ctx, id);
     await purgeCertificates(keys);
   } catch (e) {
-    return toActionState(e);
+    return await toActionState(e);
   }
   revalidatePath("/dashboard");
   redirect("/dashboard");
@@ -84,7 +84,7 @@ export async function createRecordAction(
     const input = parseOrThrow(recordInputSchema, formToObject(form, RECORD_FIELDS));
     await createRecordWithCertificate(ctx, equipmentId, input, firstFile(form, "certificate"));
   } catch (e) {
-    return toActionState(e, form);
+    return await toActionState(e, form);
   }
   revalidatePath("/dashboard");
   revalidatePath(`/equipments/${equipmentId}`);

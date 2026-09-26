@@ -4,6 +4,8 @@
  * sont faits en UTC pour être indépendants du fuseau du serveur.
  */
 
+import { DEFAULT_LOCALE, LOCALE_TAGS, type Locale } from "@/i18n/config";
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
 
@@ -46,10 +48,15 @@ export function daysUntil(iso: string, today: string = todayIso()): number {
   return Math.round((parse(iso).getTime() - parse(today).getTime()) / DAY_MS);
 }
 
-export function formatDateFr(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
+/** Date courte localisée (jour/mois/année en fr, es et en-GB). */
+export function formatDate(iso: string | null | undefined, locale: Locale = DEFAULT_LOCALE): string {
+  if (!iso || !isIsoDate(iso)) return "—";
+  return new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(parse(iso));
 }
 
 /** Échéance de conformité affichée dans l'inventaire et sur la page de scan. */

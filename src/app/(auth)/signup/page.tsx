@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import { pageTitle } from "@/i18n/metadata";
 import { SignupForm } from "./signup-form";
 
-export const metadata: Metadata = { title: "Inscription" };
+export const generateMetadata = pageTitle("signup");
 
 export default function SignupPage() {
   return <SignupForm />;

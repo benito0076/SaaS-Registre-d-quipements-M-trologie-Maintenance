@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localeFromRequest } from "@/i18n/request-locale";
 import { renderLabelsPdf, type LabelFormat } from "@/lib/labels-pdf";
 import { NotFoundError } from "@/lib/errors";
 import { scanUrl } from "@/lib/qr";
@@ -19,6 +20,7 @@ export const GET = withTenant(async (req, ctx) => {
       url: scanUrl(r.qrCodeToken!),
     })),
     format,
+    localeFromRequest(req),
   );
   const name = rows.length === 1 ? `etiquette-${rows[0].internalId}` : "etiquettes";
   return new NextResponse(Buffer.from(pdf), {

@@ -1,4 +1,7 @@
-import { isAppError, PlanLimitError, ValidationError } from "@/lib/errors";
+import { getLocale } from "next-intl/server";
+import { isLocale, DEFAULT_LOCALE } from "@/i18n/config";
+import { translateAppError } from "@/i18n/errors";
+import { isAppError } from "@/lib/errors";
 
 export interface ActionState {
   ok?: boolean;
@@ -17,14 +20,14 @@ export function formValues(form: FormData): Record<string, string> {
   return out;
 }
 
+export async function currentLocale() {
+  const locale = await getLocale();
+  return isLocale(locale) ? locale : DEFAULT_LOCALE;
+}
+
 /** Traduit une erreur métier en état de formulaire ; relance les erreurs inattendues. */
-export function toActionState(e: unknown, form?: FormData): ActionState {
+export async function toActionState(e: unknown, form?: FormData): Promise<ActionState> {
+  if (!isAppError(e)) throw e;
   const values = form ? formValues(form) : undefined;
-  if (e instanceof ValidationError) {
-    const hasFieldErrors = Object.values(e.fieldErrors).some((v) => v?.length);
-    return { error: e.message, fieldErrors: hasFieldErrors ? e.fieldErrors : undefined, values };
-  }
-  if (e instanceof PlanLimitError) return { error: e.message, code: e.code, values };
-  if (isAppError(e)) return { error: e.message, values };
-  throw e;
+  return { ...translateAppError(e, await currentLocale()), values };
 }

@@ -1,25 +1,26 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { updateEquipmentAction } from "@/app/actions/equipments";
+import { pageTitle } from "@/i18n/metadata";
 import { orNotFound } from "@/lib/not-found";
 import { can } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 import { getEquipment } from "@/server/equipments";
 import { EquipmentForm } from "../../equipment-form";
 
-export const metadata: Metadata = { title: "Modifier l'équipement" };
+export const generateMetadata = pageTitle("editEquipment");
 
 export default async function EditEquipmentPage({ params }: PageProps<"/equipments/[id]/edit">) {
   const { id } = await params;
   const user = await requireUser(`/equipments/${id}/edit`);
   if (!can(user.role, "equipment:write")) redirect(`/equipments/${id}`);
-  const e = await orNotFound(getEquipment(user, id));
+  const [e, t] = await Promise.all([orNotFound(getEquipment(user, id)), getTranslations("equipmentForm")]);
   return (
     <div className="mx-auto grid max-w-3xl gap-4">
-      <h1 className="text-xl font-semibold">Modifier {e.internalId}</h1>
+      <h1 className="text-xl font-semibold">{t("editTitle", { id: e.internalId })}</h1>
       <EquipmentForm
         action={updateEquipmentAction.bind(null, e.id)}
-        submitLabel="Enregistrer"
+        submitLabel={t("save")}
         cancelHref={`/equipments/${e.id}`}
         canManageBilling={can(user.role, "billing:manage")}
         defaults={{

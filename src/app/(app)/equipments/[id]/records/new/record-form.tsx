@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Camera, FileText, FileUp } from "lucide-react";
 import type { ActionState } from "@/app/actions/state";
 import { RECORD_RESULTS, RECORD_TYPES } from "@/db/enums";
@@ -10,8 +11,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { addMonths, formatDateFr, isIsoDate } from "@/lib/dates";
-import { RECORD_RESULT_LABELS, RECORD_TYPE_LABELS } from "@/lib/labels";
+import { addMonths, formatDate, isIsoDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -32,6 +32,9 @@ export function RecordForm({
   accept: string;
   frequencyMonths: number;
 }) {
+  const t = useTranslations("recordForm");
+  const tc = useTranslations();
+  const locale = useLocale();
   const [state, formAction] = useActionState(action, {});
   const v = state.values ?? {};
   const fe = state.fieldErrors ?? {};
@@ -50,7 +53,7 @@ export function RecordForm({
       });
     setFileError(null);
     if (f && f.size > MAX_BYTES) {
-      setFileError("Fichier trop volumineux (10 Mo maximum)");
+      setFileError(tc("errors.fileTooLarge"));
       e.target.value = "";
       setFileName(null);
       return;
@@ -62,19 +65,19 @@ export function RecordForm({
     <Card>
       <CardContent>
         <form action={formAction} className="grid gap-5">
-          <FormError message={state.fieldErrors ? "Veuillez corriger les champs signalés." : state.error} />
+          <FormError message={state.fieldErrors ? tc("errors.fixFields") : state.error} />
 
-          <Field label="Type d'intervention" htmlFor="type" required error={fe.type}>
+          <Field label={t("type")} htmlFor="type" required error={fe.type}>
             <select id="type" name="type" className={cn(selectClass, "h-11 text-base")} defaultValue={v.type ?? "calibration"}>
-              {RECORD_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {RECORD_TYPE_LABELS[t]}
+              {RECORD_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {tc(`recordType.${type}`)}
                 </option>
               ))}
             </select>
           </Field>
 
-          <Field label="Date" htmlFor="performedAt" required error={fe.performedAt}>
+          <Field label={t("date")} htmlFor="performedAt" required error={fe.performedAt}>
             <Input
               id="performedAt"
               name="performedAt"
@@ -86,13 +89,13 @@ export function RecordForm({
             />
           </Field>
 
-          <Field label="Réalisé par" htmlFor="performedBy" required error={fe.performedBy} hint="Technicien interne ou laboratoire externe">
+          <Field label={t("performedBy")} htmlFor="performedBy" required error={fe.performedBy} hint={t("performedByHint")}>
             <Input id="performedBy" name="performedBy" required maxLength={255} className="h-11 text-base" defaultValue={v.performedBy ?? defaultPerformedBy} />
           </Field>
 
           <fieldset className="grid gap-1.5">
             <legend className="mb-1.5 text-sm font-medium">
-              Résultat<span className="text-red-600">*</span>
+              {t("result")}<span className="text-red-600">*</span>
             </legend>
             <div className="grid grid-cols-3 gap-2">
               {RECORD_RESULTS.map((r) => (
@@ -106,7 +109,7 @@ export function RecordForm({
                   )}
                 >
                   <input type="radio" name="statusResult" value={r} checked={result === r} onChange={() => setResult(r)} className="sr-only" />
-                  {RECORD_RESULT_LABELS[r]}
+                  {tc(`recordResult.${r}`)}
                 </label>
               ))}
             </div>
@@ -115,20 +118,24 @@ export function RecordForm({
             ))}
             {result === "conform" && isIsoDate(performedAt) && (
               <p className="text-xs text-muted-foreground">
-                Prochaine échéance recalculée : <strong>{formatDateFr(addMonths(performedAt, frequencyMonths))}</strong> ({frequencyMonths} mois).
+                {t.rich("nextDuePreview", {
+                  date: formatDate(addMonths(performedAt, frequencyMonths), locale),
+                  months: frequencyMonths,
+                  b: (chunks) => <strong>{chunks}</strong>,
+                })}
               </p>
             )}
           </fieldset>
 
           <div className="grid gap-1.5">
-            <span className="text-sm font-medium">Certificat / fiche d&apos;intervention</span>
+            <span className="text-sm font-medium">{t("certificate")}</span>
             <div className="grid grid-cols-2 gap-2">
               <label className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 cursor-pointer")}>
-                <Camera /> Photo
+                <Camera /> {t("photo")}
                 <input type="file" name="certificate" accept="image/*" capture="environment" className="sr-only" onChange={onFile} />
               </label>
               <label className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 cursor-pointer")}>
-                <FileUp /> PDF / fichier
+                <FileUp /> {t("file")}
                 <input type="file" name="certificate" accept={accept} className="sr-only" onChange={onFile} />
               </label>
             </div>
@@ -138,19 +145,19 @@ export function RecordForm({
               </p>
             )}
             {(fileError || fe.certificate) && <p className="text-xs text-red-600">{fileError ?? fe.certificate?.[0]}</p>}
-            <p className="text-xs text-muted-foreground">PDF, JPEG, PNG, WebP ou HEIC — 10 Mo maximum.</p>
+            <p className="text-xs text-muted-foreground">{t("fileHint")}</p>
           </div>
 
-          <Field label="Remarques" htmlFor="comments" error={fe.comments}>
+          <Field label={t("comments")} htmlFor="comments" error={fe.comments}>
             <Textarea id="comments" name="comments" rows={3} maxLength={5000} className="text-base" defaultValue={v.comments} />
           </Field>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Link href={cancelHref} className={buttonVariants({ variant: "outline", size: "lg" })}>
-              Annuler
+              {tc("common.cancel")}
             </Link>
             <SubmitButton size="lg" className="h-12 text-base sm:h-9 sm:text-sm">
-              Enregistrer l&apos;intervention
+              {t("submit")}
             </SubmitButton>
           </div>
         </form>

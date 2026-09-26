@@ -33,9 +33,3 @@ export function can(role: UserRole, permission: Permission): boolean {
 export function assertCan(role: UserRole, permission: Permission): void {
   if (!can(role, permission)) throw new ForbiddenError();
 }
-
-export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Administrateur",
-  technician: "Technicien",
-  viewer: "Lecteur",
-};

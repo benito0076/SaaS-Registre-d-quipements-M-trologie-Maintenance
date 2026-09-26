@@ -1,6 +1,8 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import QRCode from "qrcode";
-import { formatDateFr } from "./dates";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { translator } from "@/i18n/translator";
+import { formatDate } from "./dates";
 
 /**
  * Génération PDF des étiquettes (QR code vectoriel : chaque module est un
@@ -104,6 +106,7 @@ function drawLabel(
   originX: number,
   originY: number,
   fonts: { regular: PDFFont; bold: PDFFont },
+  text: { nextDue: string; date: (iso: string) => string },
 ) {
   const pad = 2 * MM;
   const h = LABEL_H_MM * MM;
@@ -122,14 +125,14 @@ function drawLabel(
     page.drawText(line, { x: textX, y, size: 6.5, font: fonts.regular });
     y -= 7.5;
   }
-  page.drawText("Prochaine échéance", {
+  page.drawText(fitText(winAnsiSafe(text.nextDue, fonts.regular), fonts.regular, 5.5, textW), {
     x: textX,
     y: originY + pad + 9,
     size: 5.5,
     font: fonts.regular,
     color: rgb(0.35, 0.35, 0.35),
   });
-  page.drawText(formatDateFr(label.nextCalibrationDate), {
+  page.drawText(text.date(label.nextCalibrationDate), {
     x: textX,
     y: originY + pad,
     size: 9,
@@ -137,9 +140,16 @@ function drawLabel(
   });
 }
 
-export async function renderLabelsPdf(labels: LabelData[], format: LabelFormat): Promise<Uint8Array> {
+export async function renderLabelsPdf(
+  labels: LabelData[],
+  format: LabelFormat,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<Uint8Array> {
+  const t = translator(locale);
+  const text = { nextDue: t("labels.nextDue"), date: (iso: string) => formatDate(iso, locale) };
   const doc = await PDFDocument.create();
-  doc.setTitle("Étiquettes équipements");
+  doc.setTitle(t("labels.pdfTitle"));
+  doc.setLanguage(locale);
   doc.setCreator("Registre Métrologie");
   const fonts = {
     regular: await doc.embedFont(StandardFonts.Helvetica),
@@ -149,7 +159,7 @@ export async function renderLabelsPdf(labels: LabelData[], format: LabelFormat):
   if (format === "single") {
     for (const label of labels) {
       const page = doc.addPage([LABEL_W_MM * MM, LABEL_H_MM * MM]);
-      drawLabel(page, label, 0, 0, fonts);
+      drawLabel(page, label, 0, 0, fonts, text);
     }
   } else {
     const { cols, rows, gapX, gapY } = A4_GRID;
@@ -175,7 +185,7 @@ export async function renderLabelsPdf(labels: LabelData[], format: LabelFormat):
           borderColor: rgb(0.85, 0.85, 0.85),
           borderWidth: 0.3,
         });
-        drawLabel(page, label, x, y, fonts);
+        drawLabel(page, label, x, y, fonts, text);
       });
     }
   }

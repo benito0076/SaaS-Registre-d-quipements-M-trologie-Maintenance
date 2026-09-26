@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { ActionState } from "@/app/actions/state";
 import { EQUIPMENT_STATUSES } from "@/db/enums";
 import { Field, FormError, SubmitButton, selectClass } from "@/components/form";
@@ -10,7 +11,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { addMonths, isIsoDate } from "@/lib/dates";
-import { EQUIPMENT_STATUS_LABELS } from "@/lib/labels";
 import { PLAN_LIMIT_CODE } from "@/lib/plan";
 
 export interface EquipmentFormValues {
@@ -39,6 +39,8 @@ export function EquipmentForm({
   cancelHref: string;
   canManageBilling: boolean;
 }) {
+  const t = useTranslations("equipmentForm");
+  const tc = useTranslations();
   const [state, formAction] = useActionState(action, {});
   // La modale d'upgrade s'ouvre à chaque refus pour limite du plan gratuit.
   const [dismissed, setDismissed] = useState<ActionState | null>(null);
@@ -63,36 +65,36 @@ export function EquipmentForm({
     <Card>
       <CardContent>
         <form action={formAction} className="grid gap-5">
-          <FormError message={state.fieldErrors ? "Veuillez corriger les champs signalés." : state.error} />
+          <FormError message={state.fieldErrors ? tc("errors.fixFields") : state.error} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Code interne" htmlFor="internalId" required error={fe.internalId} hint="Ex. : EQ-2026-004">
+            <Field label={t("internalId")} htmlFor="internalId" required error={fe.internalId} hint={t("internalIdHint")}>
               <Input id="internalId" name="internalId" required maxLength={100} defaultValue={values.internalId} />
             </Field>
-            <Field label="Nom" htmlFor="name" required error={fe.name}>
-              <Input id="name" name="name" required maxLength={255} defaultValue={values.name} placeholder="Pied à coulisse numérique" />
+            <Field label={t("name")} htmlFor="name" required error={fe.name}>
+              <Input id="name" name="name" required maxLength={255} defaultValue={values.name} placeholder={t("namePlaceholder")} />
             </Field>
-            <Field label="Marque" htmlFor="brand" error={fe.brand}>
+            <Field label={t("brand")} htmlFor="brand" error={fe.brand}>
               <Input id="brand" name="brand" maxLength={100} defaultValue={values.brand} />
             </Field>
-            <Field label="Modèle" htmlFor="model" error={fe.model}>
+            <Field label={t("model")} htmlFor="model" error={fe.model}>
               <Input id="model" name="model" maxLength={100} defaultValue={values.model} />
             </Field>
-            <Field label="Numéro de série" htmlFor="serialNumber" error={fe.serialNumber}>
+            <Field label={t("serialNumber")} htmlFor="serialNumber" error={fe.serialNumber}>
               <Input id="serialNumber" name="serialNumber" maxLength={100} defaultValue={values.serialNumber} />
             </Field>
-            <Field label="Emplacement" htmlFor="location" error={fe.location} hint="Salle, laboratoire, atelier…">
+            <Field label={t("location")} htmlFor="location" error={fe.location} hint={t("locationHint")}>
               <Input id="location" name="location" maxLength={100} defaultValue={values.location} />
             </Field>
-            <Field label="Statut" htmlFor="status" error={fe.status}>
+            <Field label={t("status")} htmlFor="status" error={fe.status}>
               <select id="status" name="status" className={selectClass} defaultValue={values.status}>
                 {EQUIPMENT_STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    {EQUIPMENT_STATUS_LABELS[s]}
+                    {tc(`equipmentStatus.${s}`)}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Fréquence d'étalonnage (mois)" htmlFor="calibrationFrequencyMonths" required error={fe.calibrationFrequencyMonths}>
+            <Field label={t("frequency")} htmlFor="calibrationFrequencyMonths" required error={fe.calibrationFrequencyMonths}>
               <Input
                 id="calibrationFrequencyMonths"
                 name="calibrationFrequencyMonths"
@@ -108,7 +110,7 @@ export function EquipmentForm({
                 }}
               />
             </Field>
-            <Field label="Dernier étalonnage / contrôle" htmlFor="lastCalibrationDate" error={fe.lastCalibrationDate}>
+            <Field label={t("lastCalibration")} htmlFor="lastCalibrationDate" error={fe.lastCalibrationDate}>
               <Input
                 id="lastCalibrationDate"
                 name="lastCalibrationDate"
@@ -121,11 +123,11 @@ export function EquipmentForm({
               />
             </Field>
             <Field
-              label="Prochain étalonnage / contrôle"
+              label={t("nextCalibration")}
               htmlFor="nextCalibrationDate"
               required
               error={fe.nextCalibrationDate}
-              hint="Recalculée automatiquement à chaque intervention conforme."
+              hint={t("nextCalibrationHint")}
             >
               <Input
                 id="nextCalibrationDate"
@@ -142,7 +144,7 @@ export function EquipmentForm({
           </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Link href={cancelHref} className={buttonVariants({ variant: "outline", size: "lg" })}>
-              Annuler
+              {tc("common.cancel")}
             </Link>
             <SubmitButton size="lg">{submitLabel}</SubmitButton>
           </div>

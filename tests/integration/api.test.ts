@@ -97,3 +97,26 @@ describe("API : isolation par organisation (critère d'acceptation §5)", () => 
     expect((await patched.json()).data).toMatchObject({ location: "Atelier", name: "Balance" });
   });
 });
+
+describe("API : messages d'erreur localisés", () => {
+  beforeEach(resetDb);
+
+  it("répond dans la langue demandée", async () => {
+    const a = await createOrg("A");
+    current = { ...a, fullName: null, orgName: "A" };
+    const id = crypto.randomUUID();
+    const fr = await equipmentRoute.GET(req(`/api/equipments/${id}`), params({ id }));
+    const en = await equipmentRoute.GET(req(`/api/equipments/${id}`, { headers: { "accept-language": "en-US" } }), params({ id }));
+    const es = await equipmentRoute.GET(req(`/api/equipments/${id}`, { headers: { cookie: "NEXT_LOCALE=es" } }), params({ id }));
+    expect((await fr.json()).error).toBe("Ressource introuvable");
+    expect((await en.json()).error).toBe("Resource not found");
+    expect((await es.json()).error).toBe("Recurso no encontrado");
+
+    const bad = await listRoute.POST(
+      req("/api/equipments", { method: "POST", headers: { "accept-language": "en" }, body: JSON.stringify({ name: "x" }) }),
+      params({}),
+    );
+    expect(bad.status).toBe(400);
+    expect((await bad.json()).fieldErrors.internalId).toEqual(["Required field"]);
+  });
+});

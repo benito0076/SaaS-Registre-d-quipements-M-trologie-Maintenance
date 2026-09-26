@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import { pageTitle } from "@/i18n/metadata";
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = { title: "Connexion" };
+export const generateMetadata = pageTitle("login");
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { callbackUrl } = await searchParams;

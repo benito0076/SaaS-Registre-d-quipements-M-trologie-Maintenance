@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 import { and, asc, count, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { organizations, subscriptions, users, type UserRole } from "@/db/schema";
@@ -8,7 +9,6 @@ import { isUuid } from "@/lib/validation";
 import type { Ctx } from "./context";
 
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS ?? 12);
-const EMAIL_TAKEN = "Un compte existe déjà avec cet e-mail";
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -16,6 +16,7 @@ export async function hashPassword(password: string): Promise<string> {
 
 /** Inscription (§3.A) : crée l'organisation, son administrateur et l'abonnement gratuit. */
 export async function signupOrganization(input: {
+  locale?: Locale;
   companyName: string;
   fullName: string | null;
   email: string;
@@ -24,7 +25,9 @@ export async function signupOrganization(input: {
   const passwordHash = await hashPassword(input.password);
   try {
     return await db.transaction(async (tx) => {
-      const [org] = await tx.insert(organizations).values({ name: input.companyName }).returning();
+      const [org] = await tx
+        .insert(organizations)
+        .values({ name: input.companyName, locale: input.locale ?? DEFAULT_LOCALE }).returning();
       const [user] = await tx
         .insert(users)
         .values({
@@ -39,7 +42,7 @@ export async function signupOrganization(input: {
       return { orgId: org.id, userId: user.id };
     });
   } catch (e) {
-    if (isUniqueViolation(e)) throw new ConflictError(EMAIL_TAKEN);
+    if (isUniqueViolation(e)) throw new ConflictError("emailTaken");
     throw e;
   }
 }
@@ -77,7 +80,7 @@ export async function addTeamMember(
       .returning({ id: users.id });
     return user;
   } catch (e) {
-    if (isUniqueViolation(e)) throw new ConflictError(EMAIL_TAKEN);
+    if (isUniqueViolation(e)) throw new ConflictError("emailTaken");
     throw e;
   }
 }
@@ -88,7 +91,7 @@ async function assertAnotherAdminRemains(ctx: Ctx, excludingUserId: string) {
     .from(users)
     .where(and(eq(users.orgId, ctx.orgId), eq(users.role, "admin"), ne(users.id, excludingUserId)));
   if (value === 0) {
-    throw new ValidationError("L'organisation doit conserver au moins un administrateur");
+    throw new ValidationError("lastAdmin");
   }
 }
 
@@ -107,11 +110,23 @@ export async function updateTeamMemberRole(ctx: Ctx, userId: string, role: UserR
 export async function removeTeamMember(ctx: Ctx, userId: string) {
   assertCan(ctx.role, "team:manage");
   if (!isUuid(userId)) throw new NotFoundError();
-  if (userId === ctx.userId) throw new ValidationError("Vous ne pouvez pas supprimer votre propre compte");
+  if (userId === ctx.userId) throw new ValidationError("cannotRemoveSelf");
   await assertAnotherAdminRemains(ctx, userId);
   const deleted = await db
     .delete(users)
     .where(and(eq(users.id, userId), eq(users.orgId, ctx.orgId)))
     .returning({ id: users.id });
   if (deleted.length === 0) throw new NotFoundError();
+}
+
+export async function getOrganization(ctx: Ctx) {
+  const [org] = await db.select().from(organizations).where(eq(organizations.id, ctx.orgId)).limit(1);
+  if (!org) throw new NotFoundError();
+  return org;
+}
+
+/** Paramètres de l'organisation (administrateurs) : langue des e-mails d'alerte. */
+export async function updateOrganizationSettings(ctx: Ctx, input: { locale: Locale }) {
+  assertCan(ctx.role, "team:manage");
+  await db.update(organizations).set({ locale: input.locale }).where(eq(organizations.id, ctx.orgId));
 }

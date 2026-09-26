@@ -5,7 +5,13 @@ import { USER_ROLES, type UserRole } from "@/db/schema";
 import { ValidationError } from "@/lib/errors";
 import { requireUser } from "@/lib/session";
 import { parseOrThrow, teamMemberSchema } from "@/lib/validation";
-import { addTeamMember, removeTeamMember, updateTeamMemberRole } from "@/server/organizations";
+import { isLocale } from "@/i18n/config";
+import {
+  addTeamMember,
+  removeTeamMember,
+  updateOrganizationSettings,
+  updateTeamMemberRole,
+} from "@/server/organizations";
 import { toActionState, type ActionState } from "./state";
 
 export async function addMemberAction(_prev: ActionState, form: FormData): Promise<ActionState> {
@@ -19,7 +25,7 @@ export async function addMemberAction(_prev: ActionState, form: FormData): Promi
     });
     await addTeamMember(ctx, input);
   } catch (e) {
-    return toActionState(e, form);
+    return await toActionState(e, form);
   }
   revalidatePath("/team");
   return { ok: true };
@@ -29,10 +35,10 @@ export async function changeRoleAction(userId: string, form: FormData): Promise<
   const ctx = await requireUser();
   try {
     const role = form.get("role") as UserRole;
-    if (!USER_ROLES.includes(role)) throw new ValidationError("Rôle invalide");
+    if (!USER_ROLES.includes(role)) throw new ValidationError("invalidRole");
     await updateTeamMemberRole(ctx, userId, role);
   } catch (e) {
-    return toActionState(e);
+    return await toActionState(e);
   }
   revalidatePath("/team");
   return { ok: true };
@@ -43,7 +49,20 @@ export async function removeMemberAction(userId: string): Promise<ActionState> {
   try {
     await removeTeamMember(ctx, userId);
   } catch (e) {
-    return toActionState(e);
+    return await toActionState(e);
+  }
+  revalidatePath("/team");
+  return { ok: true };
+}
+
+export async function updateSettingsAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const ctx = await requireUser();
+  try {
+    const locale = form.get("locale");
+    if (!isLocale(locale)) throw new ValidationError("invalidData", { locale: ["invalidValue"] });
+    await updateOrganizationSettings(ctx, { locale });
+  } catch (e) {
+    return await toActionState(e);
   }
   revalidatePath("/team");
   return { ok: true };

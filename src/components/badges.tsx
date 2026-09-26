@@ -1,22 +1,26 @@
+"use client";
+
+import { useLocale, useTranslations } from "next-intl";
 import type { EquipmentStatus, RecordResult } from "@/db/enums";
-import { daysUntil, dueState, formatDateFr } from "@/lib/dates";
-import { EQUIPMENT_STATUS_LABELS, RECORD_RESULT_LABELS } from "@/lib/labels";
+import { daysUntil, dueState, formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 const pill = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap";
 
-/** Badge d'échéance : rouge si échu, orange si ≤ 30 jours, vert sinon. */
+/** Badge d'échéance : rouge si échu ou ≤ 7 jours, orange si ≤ 30 jours, vert sinon. */
 export function DueBadge({ date, today, className }: { date: string; today?: string; className?: string }) {
+  const t = useTranslations("due");
+  const locale = useLocale();
   const state = dueState(date, today);
   const days = daysUntil(date, today);
   const label =
     state === "overdue"
-      ? `Échu (${-days} j)`
+      ? t("overdue", { days: -days })
       : days === 0
-        ? "Aujourd'hui"
+        ? t("today")
         : state === "due_soon"
-          ? `J-${days}`
-          : "À jour";
+          ? t("soon", { days })
+          : t("ok");
   return (
     <span
       className={cn(
@@ -26,7 +30,7 @@ export function DueBadge({ date, today, className }: { date: string; today?: str
         state === "ok" && "bg-green-100 text-green-800",
         className,
       )}
-      title={`Échéance : ${formatDateFr(date)}`}
+      title={t("tooltip", { date: formatDate(date, locale) })}
     >
       {label}
     </span>
@@ -34,6 +38,7 @@ export function DueBadge({ date, today, className }: { date: string; today?: str
 }
 
 export function StatusBadge({ status }: { status: EquipmentStatus | null }) {
+  const t = useTranslations("equipmentStatus");
   const s = status ?? "operational";
   return (
     <span
@@ -44,12 +49,13 @@ export function StatusBadge({ status }: { status: EquipmentStatus | null }) {
         s === "out_of_service" && "bg-zinc-800 text-white",
       )}
     >
-      {EQUIPMENT_STATUS_LABELS[s]}
+      {t(s)}
     </span>
   );
 }
 
 export function ResultBadge({ result }: { result: RecordResult }) {
+  const t = useTranslations("recordResult");
   return (
     <span
       className={cn(
@@ -59,7 +65,7 @@ export function ResultBadge({ result }: { result: RecordResult }) {
         result === "non_conform" && "bg-red-100 text-red-800",
       )}
     >
-      {RECORD_RESULT_LABELS[result]}
+      {t(result)}
     </span>
   );
 }

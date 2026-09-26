@@ -1,0 +1,1 @@
+ALTER TABLE "organizations" ADD COLUMN "locale" varchar(5) DEFAULT 'fr' NOT NULL;

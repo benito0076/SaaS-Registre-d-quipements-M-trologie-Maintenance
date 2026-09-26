@@ -14,7 +14,7 @@ export const GET = withTenant<Params>(async (_req, ctx, { id }) => {
 /** Mise à jour partielle : les champs absents conservent leur valeur. */
 export const PATCH = withTenant<Params>(async (req, ctx, { id }) => {
   const body = await readJson(req);
-  if (!body || typeof body !== "object") throw new ValidationError("Corps JSON invalide");
+  if (!body || typeof body !== "object") throw new ValidationError("invalidJson");
   const current = await getEquipment(ctx, id);
   const merged = {
     internalId: current.internalId,

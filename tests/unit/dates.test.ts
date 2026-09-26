@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, daysUntil, dueState, formatDateFr, isIsoDate } from "@/lib/dates";
+import { addDays, addMonths, daysUntil, dueState, formatDate, isIsoDate } from "@/lib/dates";
 
 describe("dates", () => {
   it("valide le format ISO", () => {
@@ -30,7 +30,7 @@ describe("dates", () => {
   });
 
   it("formate en français", () => {
-    expect(formatDateFr("2026-03-07")).toBe("07/03/2026");
-    expect(formatDateFr(null)).toBe("—");
+    expect(formatDate("2026-03-07")).toBe("07/03/2026");
+    expect(formatDate(null)).toBe("—");
   });
 });

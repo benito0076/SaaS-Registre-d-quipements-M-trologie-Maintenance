@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { alertDispatches, cronRuns } from "@/db/schema";
 import { EmailError, type EmailMessage, type EmailSender } from "@/lib/email";
 import { runExpirationCheck } from "@/server/alert-engine";
+import { updateOrganizationSettings } from "@/server/organizations";
 import { createEquipment } from "@/server/equipments";
 import { addUser, createOrg, equipmentInput, resetDb, setPlan } from "./helpers";
 
@@ -141,5 +142,22 @@ describe("moteur d'alertes (§3.D, §5 « zéro oubli »)", () => {
     expect(sender.sent[0].text).toContain("J30-HIER");
     const rows = await db.select().from(alertDispatches);
     expect(rows.map((r) => r.status).sort()).toEqual(["sent", "superseded"]);
+  });
+});
+
+describe("langue des e-mails d'alerte", () => {
+  beforeEach(resetDb);
+
+  it("utilise la langue de chaque organisation", async () => {
+    const fr = await createOrg("FR");
+    const es = await createOrg("ES");
+    await updateOrganizationSettings(es, { locale: "es" });
+    await createEquipment(fr, equipmentInput({ internalId: "FR-1", nextCalibrationDate: "2026-09-01" }));
+    await createEquipment(es, equipmentInput({ internalId: "ES-1", nextCalibrationDate: "2026-09-01" }));
+    const sender = new FakeSender();
+    await run(sender);
+    const byOrg = (email: string) => sender.sent.find((m) => m.to.includes(email))!;
+    expect(byOrg(fr.email).subject).toContain("équipement échu");
+    expect(byOrg(es.email).subject).toContain("equipo vencido");
   });
 });

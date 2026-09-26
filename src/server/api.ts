@@ -1,18 +1,19 @@
 import "server-only";
 import { NextResponse } from "next/server";
+import type { Locale } from "@/i18n/config";
+import { translateAppError } from "@/i18n/errors";
+import { localeFromRequest } from "@/i18n/request-locale";
+import { translator } from "@/i18n/translator";
 import { isAppError, ValidationError } from "@/lib/errors";
 import { getCurrentUser, type TenantContext } from "@/lib/session";
 
-/** Convertit une erreur en réponse JSON (404 pour toute ressource hors organisation). */
-export function errorResponse(e: unknown): NextResponse {
+/** Convertit une erreur en réponse JSON traduite (404 pour toute ressource hors organisation). */
+export function errorResponse(e: unknown, locale: Locale): NextResponse {
   if (isAppError(e)) {
-    const body: Record<string, unknown> = { error: e.message };
-    if (e instanceof ValidationError) body.fieldErrors = e.fieldErrors;
-    if ("code" in e) body.code = e.code;
-    return NextResponse.json(body, { status: e.status });
+    return NextResponse.json(translateAppError(e, locale), { status: e.status });
   }
   console.error("[api] erreur inattendue", e);
-  return NextResponse.json({ error: "Erreur interne" }, { status: 500 });
+  return NextResponse.json({ error: translator(locale)("errors.internal") }, { status: 500 });
 }
 
 /**
@@ -23,12 +24,15 @@ export function withTenant<P>(
   handler: (req: Request, ctx: TenantContext, params: P) => Promise<Response>,
 ) {
   return async (req: Request, route: { params: Promise<P> }): Promise<Response> => {
+    const locale = localeFromRequest(req);
     try {
       const user = await getCurrentUser();
-      if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      if (!user) {
+        return NextResponse.json({ error: translator(locale)("errors.unauthenticated") }, { status: 401 });
+      }
       return await handler(req, user, await route.params);
     } catch (e) {
-      return errorResponse(e);
+      return errorResponse(e, locale);
     }
   };
 }
@@ -37,6 +41,6 @@ export async function readJson(req: Request): Promise<unknown> {
   try {
     return await req.json();
   } catch {
-    throw new ValidationError("Corps JSON invalide");
+    throw new ValidationError("invalidJson");
   }
 }

@@ -1,16 +1,18 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { AlertTriangle, CalendarClock, Package, Wrench } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { pageTitle } from "@/i18n/metadata";
 import { dueState, todayIso } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 import { getOrgUsage, listEquipments } from "@/server/equipments";
 import { InventoryTable } from "./inventory-table";
 
-export const metadata: Metadata = { title: "Inventaire" };
+export const generateMetadata = pageTitle("dashboard");
 
 export default async function DashboardPage() {
   const user = await requireUser("/dashboard");
+  const t = await getTranslations("dashboard");
   const today = todayIso();
   const [items, usage] = await Promise.all([listEquipments(user), getOrgUsage(user)]);
 
@@ -20,14 +22,14 @@ export default async function DashboardPage() {
 
   const stats = [
     {
-      label: "Équipements",
+      label: t("statEquipments"),
       value: usage.limit ? `${items.length} / ${usage.limit}` : items.length,
       icon: Package,
       className: "",
     },
-    { label: "Échus", value: overdue, icon: AlertTriangle, className: overdue ? "text-red-600" : "" },
-    { label: "Échéance ≤ 30 j", value: soon, icon: CalendarClock, className: soon ? "text-orange-600" : "" },
-    { label: "En révision", value: maintenance, icon: Wrench, className: "" },
+    { label: t("statOverdue"), value: overdue, icon: AlertTriangle, className: overdue ? "text-red-600" : "" },
+    { label: t("statDueSoon"), value: soon, icon: CalendarClock, className: soon ? "text-orange-600" : "" },
+    { label: t("statMaintenance"), value: maintenance, icon: Wrench, className: "" },
   ];
 
   return (

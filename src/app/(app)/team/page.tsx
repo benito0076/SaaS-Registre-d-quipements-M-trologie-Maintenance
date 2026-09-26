@@ -1,29 +1,33 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDateFr } from "@/lib/dates";
-import { can, ROLE_LABELS } from "@/lib/permissions";
+import { pageTitle } from "@/i18n/metadata";
+import { getAppLocale } from "@/i18n/server";
+import { formatDate } from "@/lib/dates";
+import { can } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
-import { listTeam } from "@/server/organizations";
-import { AddMemberForm, MemberActions } from "./team-forms";
+import { getOrganization, listTeam } from "@/server/organizations";
+import { AddMemberForm, MemberActions, OrgSettingsForm } from "./team-forms";
 
-export const metadata: Metadata = { title: "Équipe" };
+export const generateMetadata = pageTitle("team");
 
 export default async function TeamPage() {
   const user = await requireUser("/team");
-  const members = await listTeam(user);
+  const [members, org, t, locale] = await Promise.all([
+    listTeam(user),
+    getOrganization(user),
+    getTranslations(),
+    getAppLocale(),
+  ]);
   const manage = can(user.role, "team:manage");
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Équipe · {user.orgName}</h1>
-        <p className="text-sm text-muted-foreground">
-          Administrateur : gestion complète · Technicien : équipements et interventions · Lecteur : consultation.
-          Les alertes e-mail sont envoyées aux administrateurs et techniciens.
-        </p>
+        <h1 className="text-xl font-semibold">{t("team.title", { org: user.orgName })}</h1>
+        <p className="text-sm text-muted-foreground">{t("team.description")}</p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Membres ({members.length})</CardTitle>
+          <CardTitle>{t("team.members", { count: members.length })}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="divide-y">
@@ -31,16 +35,17 @@ export default async function TeamPage() {
               <li key={m.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="font-medium">
-                    {m.fullName ?? m.email} {m.id === user.userId && <span className="text-xs text-muted-foreground">(vous)</span>}
+                    {m.fullName ?? m.email}{" "}
+                    {m.id === user.userId && <span className="text-xs text-muted-foreground">{t("common.you")}</span>}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {m.email} · depuis le {formatDateFr(m.createdAt?.toISOString().slice(0, 10))}
+                    {m.email} · {t("team.since", { date: formatDate(m.createdAt?.toISOString().slice(0, 10), locale) })}
                   </div>
                 </div>
                 {manage && m.id !== user.userId ? (
                   <MemberActions userId={m.id} role={m.role ?? "viewer"} />
                 ) : (
-                  <span className="text-sm">{ROLE_LABELS[m.role ?? "viewer"]}</span>
+                  <span className="text-sm">{t(`roles.${m.role ?? "viewer"}`)}</span>
                 )}
               </li>
             ))}
@@ -48,14 +53,24 @@ export default async function TeamPage() {
         </CardContent>
       </Card>
       {manage && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Ajouter un membre</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AddMemberForm />
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("team.addMember")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AddMemberForm />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("team.settings")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OrgSettingsForm locale={org.locale} />
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

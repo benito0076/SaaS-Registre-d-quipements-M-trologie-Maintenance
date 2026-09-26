@@ -82,14 +82,14 @@ export interface StoredFile {
 }
 
 export async function storeCertificate(orgId: string, file: File): Promise<StoredFile> {
-  if (file.size === 0) throw new ValidationError("Fichier vide");
+  if (file.size === 0) throw new ValidationError("emptyFile");
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new ValidationError("Fichier trop volumineux (10 Mo maximum)");
+    throw new ValidationError("fileTooLarge");
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
   const contentType = sniffType(bytes);
   if (!contentType) {
-    throw new ValidationError("Format non pris en charge (PDF, JPEG, PNG, WebP ou HEIC)");
+    throw new ValidationError("unsupportedFile");
   }
   const key = `certificates/${orgId}/${randomUUID()}.${ALLOWED_TYPES[contentType]}`;
   const fileName = sanitizeFileName(file.name || `certificat.${ALLOWED_TYPES[contentType]}`);

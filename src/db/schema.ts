@@ -21,11 +21,14 @@ import {
  */
 
 export * from "./enums";
+import type { Locale } from "@/i18n/config";
 import type { EquipmentStatus, PlanTier, RecordResult, RecordType, UserRole } from "./enums";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
+  // ajout : langue des e-mails d'alerte de l'organisation (fr | en | es)
+  locale: varchar("locale", { length: 5 }).$type<Locale>().notNull().default("fr"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
