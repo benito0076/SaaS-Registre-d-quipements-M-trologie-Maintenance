@@ -139,6 +139,9 @@ vaut `pro` pour les statuts `active`, `trialing` et `past_due`.
 - Index `org_id`, unicité `(org_id, internal_id)`.
 - Tables `cron_runs` et `alert_dispatches` : journalisation et reprise des alertes.
 - `organizations.locale` : langue des e-mails d'alerte (`fr`, `en` ou `es`).
+- Row Level Security activée sans policy sur toutes les tables (migration `0002_enable_rls`) :
+  l'API REST publique de Supabase n'y a aucun accès ; l'application se connecte directement à
+  PostgreSQL avec le rôle propriétaire.
 - L'ajout de membres se fait par un administrateur avec un mot de passe provisoire (pas encore
   d'invitation par e-mail ni de réinitialisation de mot de passe).
 
